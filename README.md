@@ -31,3 +31,6 @@ Histogram Stats: for grayscale distribution
 Feeds the features into the trained SVM model or uses a heuristic fallback
 Predicts and annotates the result with confidence score
 Displays reasoning behind the prediction
+
+
+https://github.com/thexcomrade/DEEP-FAKE-FACE-DETECTION/blob/main/uploads/background.png
