@@ -1,0 +1,67 @@
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Exception on /result [GET]
+Traceback (most recent call last):
+  File "D:\FlaskApp\venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\FlaskApp\venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\FlaskApp\venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\FlaskApp\venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\FlaskApp\backend\app.py", line 231, in result_page
+    return render_template("result.html",
+        image_filename=session['uploaded_file'],
+    ...<6 lines>...
+        model_loaded=model is not None
+    )
+  File "D:\FlaskApp\venv\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+  File "D:\FlaskApp\venv\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+  File "D:\FlaskApp\venv\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\FlaskApp\venv\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "D:\FlaskApp\backend\templates\result.html", line 155, in top-level template code
+    <img src="{{ url_for('static', filename='uploads/' + filename) }}" alt="Uploaded Image" class="uploaded-image">
+    ^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'filename' is undefined
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
+Preprocessing error: X has 4354 features, but StandardScaler is expecting 4096 features as input.
