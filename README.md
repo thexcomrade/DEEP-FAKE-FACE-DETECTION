@@ -29,8 +29,6 @@ Laplacian Variance: for image sharpness
 ORB Keypoints: for facial detail
 Histogram Stats: for grayscale distribution
 Feeds the features into the trained SVM model or uses a heuristic fallback
-Predicts and annotates the result with confidence score
+Predicts and annotates the result with a confidence score
 Displays reasoning behind the prediction
 
-
-![Uploading image.png…]()
