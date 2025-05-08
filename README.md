@@ -33,4 +33,4 @@ Predicts and annotates the result with confidence score
 Displays reasoning behind the prediction
 
 
-https://github.com/thexcomrade/DEEP-FAKE-FACE-DETECTION/blob/main/uploads/background.png
+![Uploading image.png…]()
