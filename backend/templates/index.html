@@ -290,6 +290,13 @@
         <h1>Deepfake Face Detection</h1>
         <p class="subtitle">Upload a face image to classify whether it is Genuine or AI-Generated</p>
 
+        {% if render_backend_url %}
+        <div style="margin: 0 auto 18px auto; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.4); border-radius: 20px; font-size: 0.8rem; color: #28a745; width: fit-content;" id="renderStatusPill">
+            <i class="fas fa-circle" style="font-size: 7px;"></i>
+            <span>Connected to Render ML Backend</span>
+        </div>
+        {% endif %}
+
         <form action="{{ url_for('upload_image') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
             <div class="upload-box" id="dropArea" onclick="document.getElementById('fileInput').click()">
                 <div class="upload-icon">

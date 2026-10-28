@@ -56,6 +56,46 @@ IS_SERVERLESS = bool(
 DEFAULT_UPLOADS_DIR = Path(tempfile.gettempdir()) if IS_SERVERLESS else (DEFAULT_STATIC_DIR / "uploads")
 
 
+
+def forward_prediction_to_render(render_url: str, file_path: Path) -> Optional[Dict[str, Any]]:
+    """Forward image to a remote Render backend /api/predict endpoint using urllib."""
+    import json
+    import urllib.error
+    import urllib.request
+    import uuid
+
+    url = render_url.rstrip("/") + "/api/predict"
+    boundary = f"----WebKitFormBoundary{uuid.uuid4().hex}"
+
+    try:
+        with open(file_path, "rb") as f:
+            file_bytes = f.read()
+
+        filename = file_path.name
+        body = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: image/jpeg\r\n\r\n"
+        ).encode("utf-8") + file_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+                "User-Agent": "Deepfake-Vercel-Proxy/1.0",
+            },
+            method="POST",
+        )
+
+        with urllib.request.urlopen(req, timeout=30.0) as resp:
+            if resp.status == 200:
+                return json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Remote Render forward failed (%s): %s", url, exc)
+        return None
+
+
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     """Flask application factory."""
     app = Flask(
@@ -89,6 +129,26 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         app.secret_key = configured_secret
     else:
         app.secret_key = os.environ.get("SESSION_SECRET", "deepfake-detection-production-secret-982347102938")
+
+
+    # Render backend integration config
+    app.config["RENDER_BACKEND_URL"] = os.environ.get("RENDER_BACKEND_URL", "").rstrip("/")
+
+    @app.after_request
+    def set_cors_headers(response):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        return response
+
+    @app.before_request
+    def handle_options_preflight():
+        if request.method == "OPTIONS":
+            response = app.make_default_options_response()
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+            return response
 
     # Apply testing or override configuration
     if test_config:
@@ -161,6 +221,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             theme=session.get("theme", "dark"),
             model_loaded=app.config["ML_MODEL"] is not None,
             model_info=app.config["ML_INFO"],
+            render_backend_url=app.config.get("RENDER_BACKEND_URL", ""),
         )
 
     @app.route("/upload", methods=["POST"])
@@ -366,6 +427,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             "model_path": ml_info.get("model_path"),
             "scaler_loaded": app.config.get("ML_SCALER") is not None,
             "upload_folder": app.config.get("UPLOAD_FOLDER"),
+            "render_backend_url": app.config.get("RENDER_BACKEND_URL", ""),
             "timestamp": datetime.datetime.now().isoformat(),
         })
 
