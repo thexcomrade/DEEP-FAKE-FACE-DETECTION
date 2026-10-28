@@ -28,6 +28,7 @@
 
 body {
     background-color: var(--dark-bg);
+    background-image: linear-gradient(rgba(10, 15, 29, 0.40), rgba(10, 15, 29, 0.65)), url('/static/images/background.jpg');
     color: var(--text-light);
     min-height: 100vh;
     display: flex;
@@ -38,10 +39,12 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
 body.light-mode {
     background-color: var(--light-bg);
+    background-image: linear-gradient(rgba(240, 242, 245, 0.50), rgba(240, 242, 245, 0.70)), url('/static/images/background.jpg');
     color: var(--text-dark);
 }
 

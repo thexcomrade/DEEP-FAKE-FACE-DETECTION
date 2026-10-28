@@ -247,6 +247,29 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     # ROUTES
     # ==========================================
 
+    # Serve static assets explicitly to guarantee proper MIME types across serverless & proxy runtimes
+    @app.route("/static/images/<path:filename>", endpoint="serve_static_image")
+    @app.route("/api/index/static/images/<path:filename>", endpoint="serve_api_index_static_image")
+    def serve_static_image(filename: str):
+        from flask import send_from_directory
+        img_dir = DEFAULT_STATIC_DIR / "images"
+        if (img_dir / filename).is_file():
+            return send_from_directory(str(img_dir), filename)
+        root_img = BASE_DIR.parent / "static" / "images"
+        if (root_img / filename).is_file():
+            return send_from_directory(str(root_img), filename)
+        return send_from_directory(str(img_dir), filename)
+
+    @app.route("/api/index/static/<path:filename>", endpoint="serve_api_index_static")
+    def serve_api_index_static(filename: str):
+        from flask import send_from_directory
+        if (DEFAULT_STATIC_DIR / filename).is_file():
+            return send_from_directory(str(DEFAULT_STATIC_DIR), filename)
+        root_static = BASE_DIR.parent / "static"
+        if (root_static / filename).is_file():
+            return send_from_directory(str(root_static), filename)
+        return send_from_directory(str(DEFAULT_STATIC_DIR), filename)
+
     # When uploads are saved outside static/uploads (e.g. /tmp in serverless), serve them dynamically
     if app.config["UPLOAD_FOLDER"] != str(DEFAULT_STATIC_DIR / "uploads"):
         @app.route("/static/uploads/<path:filename>")

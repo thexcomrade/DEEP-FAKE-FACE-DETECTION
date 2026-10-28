@@ -1,8 +1,13 @@
 {
+  "cleanUrls": false,
   "rewrites": [
     {
+      "source": "/static/(.*)",
+      "destination": "/static/$1"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index?__vercel_path=/$1"
     }
   ]
 }

@@ -36,6 +36,7 @@
             min-height: 100vh;
             padding: 25px 20px;
             background-color: var(--bg-dark);
+            background-image: linear-gradient(rgba(10, 15, 29, 0.40), rgba(10, 15, 29, 0.65)), url("{{ url_for('static', filename='images/background.jpg') }}");
             background-repeat: no-repeat;
             background-position: center center;
             background-attachment: fixed;
@@ -43,12 +44,12 @@
         }
 
         body.dark-mode {
-            background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.90)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-image: linear-gradient(rgba(10, 15, 29, 0.40), rgba(10, 15, 29, 0.65)), url("{{ url_for('static', filename='images/background.jpg') }}");
             color: var(--text-dark-theme);
         }
 
         body.light-mode {
-            background-image: linear-gradient(rgba(240, 242, 245, 0.88), rgba(240, 242, 245, 0.96)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            background-image: linear-gradient(rgba(240, 242, 245, 0.50), rgba(240, 242, 245, 0.70)), url("{{ url_for('static', filename='images/background.jpg') }}");
             color: var(--text-light-theme);
         }
 
