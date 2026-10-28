@@ -13,6 +13,7 @@ env/
 
 # Application Logs
 *.log
+*.log.*
 backend/app.log
 app.log
 
