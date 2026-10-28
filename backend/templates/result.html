@@ -415,6 +415,9 @@
                     <i class="fas fa-camera"></i> Save Summary Card
                 </button>
             {% endif %}
+            <a href="{{ url_for('history_dashboard') }}" class="btn btn-outline" style="border-color: #ff6600; color: #ff6600;" title="View past detections in history dashboard">
+                <i class="fas fa-history"></i> Detection History
+            </a>
             <a href="{{ url_for('index') }}" class="btn btn-secondary">
                 <i class="fas fa-redo"></i> Analyze Another Image
             </a>

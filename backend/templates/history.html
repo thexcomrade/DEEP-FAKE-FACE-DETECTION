@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detection History & Confidence Analytics - Deepfake Detection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        :root {
+            --primary: #ff6600;
+            --primary-hover: #e65c00;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #007bff;
+            --bg-dark: #121212;
+            --card-dark: rgba(28, 28, 28, 0.95);
+            --card-border-dark: rgba(255, 255, 255, 0.08);
+            --text-dark-theme: #f8f9fa;
+            --muted-dark: #a0a0a0;
+            --card-light: rgba(255, 255, 255, 0.96);
+            --card-border-light: rgba(0, 0, 0, 0.08);
+            --text-light-theme: #212529;
+            --muted-light: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+        }
+
+        body {
+            min-height: 100vh;
+            padding: 25px 20px;
+            background-color: var(--bg-dark);
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        body.dark-mode {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.90)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-dark-theme);
+        }
+
+        body.light-mode {
+            background-image: linear-gradient(rgba(240, 242, 245, 0.88), rgba(240, 242, 245, 0.96)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-light-theme);
+        }
+
+        .dashboard-container {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        /* Top Navigation Header */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 18px 24px;
+            background: var(--card-dark);
+            border-radius: 14px;
+            border: 1px solid var(--card-border-dark);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+        }
+
+        body.light-mode .header-bar {
+            background: var(--card-light);
+            border-color: var(--card-border-light);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .header-title-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-title-group .icon-badge {
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 102, 0, 0.15);
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            border: 1px solid rgba(255, 102, 0, 0.3);
+        }
+
+        .header-title-group h1 {
+            font-size: 1.45rem;
+            font-weight: 700;
+        }
+
+        .header-title-group p {
+            font-size: 0.85rem;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .header-title-group p {
+            color: var(--muted-light);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: inherit;
+            border: 1px solid var(--card-border-dark);
+        }
+
+        body.light-mode .btn-outline {
+            border-color: var(--card-border-light);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        body.light-mode .btn-outline:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .btn-danger-outline {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid rgba(220, 53, 69, 0.35);
+        }
+
+        .btn-danger-outline:hover {
+            background: rgba(220, 53, 69, 0.12);
+        }
+
+        /* Summary Stats Cards Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: var(--card-dark);
+            border-radius: 14px;
+            padding: 22px;
+            border: 1px solid var(--card-border-dark);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        body.light-mode .stat-card {
+            background: var(--card-light);
+            border-color: var(--card-border-light);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.06);
+        }
+
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .stat-icon.total { background: rgba(0, 123, 255, 0.15); color: #007bff; border: 1px solid rgba(0, 123, 255, 0.3); }
+        .stat-icon.real { background: rgba(40, 167, 69, 0.15); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.3); }
+        .stat-icon.fake { background: rgba(220, 53, 69, 0.15); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.3); }
+        .stat-icon.conf { background: rgba(255, 102, 0, 0.15); color: #ff6600; border: 1px solid rgba(255, 102, 0, 0.3); }
+
+        .stat-info .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .stat-info .stat-label {
+            font-size: 0.85rem;
+            color: var(--muted-dark);
+            margin-top: 3px;
+        }
+
+        body.light-mode .stat-info .stat-label {
+            color: var(--muted-light);
+        }
+
+        /* Disclaimer Banner */
+        .disclaimer-banner {
+            background: rgba(255, 193, 7, 0.10);
+            border: 1px solid rgba(255, 193, 7, 0.35);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: var(--text-dark-theme);
+        }
+
+        body.light-mode .disclaimer-banner {
+            color: var(--text-light-theme);
+        }
+
+        .disclaimer-banner i {
+            color: var(--warning);
+            font-size: 1.1rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        /* Filter Controls */
+        .filter-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            background: var(--card-dark);
+            padding: 6px;
+            border-radius: 10px;
+            border: 1px solid var(--card-border-dark);
+        }
+
+        body.light-mode .filter-tabs {
+            background: var(--card-light);
+            border-color: var(--card-border-light);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            padding: 7px 16px;
+            border-radius: 7px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: inherit;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* History Cards Grid */
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .history-card {
+            background: var(--card-dark);
+            border: 1px solid var(--card-border-dark);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.light-mode .history-card {
+            background: var(--card-light);
+            border-color: var(--card-border-light);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-header-status {
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border-dark);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        body.light-mode .card-header-status {
+            border-color: var(--card-border-light);
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.real {
+            background: rgba(40, 167, 69, 0.18);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.4);
+        }
+
+        .status-badge.fake {
+            background: rgba(220, 53, 69, 0.18);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.4);
+        }
+
+        .timestamp-text {
+            font-size: 0.75rem;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .timestamp-text {
+            color: var(--muted-light);
+        }
+
+        /* Image Preview Box */
+        .card-image-box {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .card-image-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .image-toggle-pill {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .image-toggle-pill:hover {
+            background: rgba(255, 102, 0, 0.85);
+        }
+
+        /* Card Body */
+        .card-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .filename-title {
+            font-size: 0.92rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Confidence Meter */
+        .confidence-meter-group {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border-dark);
+        }
+
+        body.light-mode .confidence-meter-group {
+            background: rgba(0, 0, 0, 0.03);
+            border-color: var(--card-border-light);
+        }
+
+        .confidence-meter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .confidence-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        body.light-mode .confidence-progress-bar {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .confidence-progress-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .confidence-progress-fill.real { background: var(--success); }
+        .confidence-progress-fill.fake { background: var(--danger); }
+
+        .probabilities-split {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.74rem;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .probabilities-split {
+            color: var(--muted-light);
+        }
+
+        /* Attribute Tags */
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .card-tag {
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border-dark);
+            border-radius: 6px;
+            color: var(--muted-dark);
+        }
+
+        body.light-mode .card-tag {
+            background: rgba(0, 0, 0, 0.04);
+            border-color: var(--card-border-light);
+            color: var(--muted-light);
+        }
+
+        /* Empty State */
+        .empty-history-box {
+            grid-column: 1 / -1;
+            background: var(--card-dark);
+            border-radius: 14px;
+            padding: 50px 20px;
+            text-align: center;
+            border: 1px dashed var(--card-border-dark);
+        }
+
+        body.light-mode .empty-history-box {
+            background: var(--card-light);
+            border-color: var(--card-border-light);
+        }
+
+        .empty-history-box i {
+            font-size: 3rem;
+            color: var(--muted-dark);
+            margin-bottom: 16px;
+        }
+
+        .empty-history-box h3 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+        }
+
+        .empty-history-box p {
+            font-size: 0.9rem;
+            color: var(--muted-dark);
+            max-width: 480px;
+            margin: 0 auto 20px auto;
+        }
+
+        body.light-mode .empty-history-box p {
+            color: var(--muted-light);
+        }
+    </style>
+</head>
+<body class="{{ 'light-mode' if theme == 'light' else 'dark-mode' }}">
+    <div class="dashboard-container">
+        <!-- Header Navigation Bar -->
+        <header class="header-bar">
+            <div class="header-title-group">
+                <div class="icon-badge">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div>
+                    <h1>Detection History & Analytics</h1>
+                    <p>Audit trail of analyzed face images with calibrated confidence metrics</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-cloud-upload-alt"></i> Analyze New Image
+                </a>
+                <button onclick="clearAllHistory()" class="btn btn-danger-outline" title="Clear all local scan records">
+                    <i class="fas fa-trash-alt"></i> Clear
+                </button>
+                <button onclick="toggleTheme()" class="btn btn-outline" id="themeBtn">
+                    <i class="fas fa-{{ 'sun' if theme == 'dark' else 'moon' }}"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Summary Statistics Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon total">
+                    <i class="fas fa-camera"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statTotalScans">{{ total_scans }}</div>
+                    <div class="stat-label">Total Faces Analyzed</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon real">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statRealCount">{{ real_count }}</div>
+                    <div class="stat-label">Genuine Faces Verified</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon fake">
+                    <i class="fas fa-user-ninja"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statFakeCount">{{ fake_count }}</div>
+                    <div class="stat-label">Potential Deepfakes Flagged</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon conf">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statAvgConf">{{ avg_confidence }}%</div>
+                    <div class="stat-label">Average Model Confidence</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Responsible AI Explanatory Note -->
+        <div class="disclaimer-banner">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <strong>Interpreting Model Confidence:</strong>
+                Scores represent the calibrated statistical probability derived from a trained <strong>Linear Support Vector Classifier</strong> operating on 4,096 standardized grayscale facial features ($64 \times 64$ crop). While the model demonstrates <strong>93.4% empirical accuracy</strong> on held-out benchmarks, confidence scores reflect probabilistic mathematical distance and should not be treated as an absolute forensic guarantee.
+            </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="filter-bar">
+            <div class="filter-tabs">
+                <button class="filter-btn active" onclick="filterCards('all', this)" id="tabAll">
+                    All Scans (<span id="countAll">{{ total_scans }}</span>)
+                </button>
+                <button class="filter-btn" onclick="filterCards('Real', this)" id="tabReal">
+                    <i class="fas fa-check-circle" style="color: var(--success);"></i> Genuine (<span id="countReal">{{ real_count }}</span>)
+                </button>
+                <button class="filter-btn" onclick="filterCards('Fake', this)" id="tabFake">
+                    <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Deepfakes (<span id="countFake">{{ fake_count }}</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- History Items Grid -->
+        <div class="history-grid" id="historyGrid">
+            {% if history %}
+                {% for item in history %}
+                <div class="history-card" data-prediction="{{ item.prediction }}">
+                    <div class="card-header-status">
+                        <span class="status-badge {{ 'real' if item.prediction == 'Real' else 'fake' }}">
+                            <i class="fas fa-{{ 'shield-alt' if item.prediction == 'Real' else 'robot' }}"></i>
+                            {{ 'Genuine' if item.prediction == 'Real' else 'Potential Deepfake' }}
+                        </span>
+                        <span class="timestamp-text">{{ item.timestamp }}</span>
+                    </div>
+
+                    <div class="card-image-box">
+                        <img 
+                            id="img-{{ loop.index }}" 
+                            src="{{ url_for('static', filename='uploads/' + item.result_image) }}" 
+                            data-annotated="{{ url_for('static', filename='uploads/' + item.result_image) }}" 
+                            {% if item.saliency_image %}data-saliency="{{ url_for('static', filename='uploads/' + item.saliency_image) }}"{% endif %}
+                            alt="{{ item.filename }}" 
+                        />
+                        {% if item.saliency_image %}
+                        <button class="image-toggle-pill" onclick="toggleCardHeatmap('img-{{ loop.index }}', this)">
+                            <i class="fas fa-fire"></i> View XAI Heatmap
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <div class="card-body">
+                        <div class="filename-title" title="{{ item.filename }}">
+                            <i class="far fa-image"></i> {{ item.filename }}
+                        </div>
+
+                        <div class="confidence-meter-group">
+                            <div class="confidence-meter-header">
+                                <span>Model Confidence</span>
+                                <span style="color: {{ '#28a745' if item.prediction == 'Real' else '#dc3545' }};">
+                                    {{ "%.1f"|format(item.confidence) }}%
+                                </span>
+                            </div>
+                            <div class="confidence-progress-bar">
+                                <div class="confidence-progress-fill {{ 'real' if item.prediction == 'Real' else 'fake' }}" style="width: {{ item.confidence }}%;"></div>
+                            </div>
+                            <div class="probabilities-split">
+                                <span>P(Real): {{ "%.1f"|format((item.probabilities.Real or 0.0) * 100) }}%</span>
+                                <span>P(Fake): {{ "%.1f"|format((item.probabilities.Fake or 0.0) * 100) }}%</span>
+                            </div>
+                        </div>
+
+                        <div class="card-tags">
+                            {% if item.analysis_reasons %}
+                                {% for r in item.analysis_reasons[:3] %}
+                                    <span class="card-tag">#{{ r }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="card-tag">#facial scan</span>
+                            {% endif %}
+                            {% if item.processing_time %}
+                                <span class="card-tag"><i class="far fa-clock"></i> {{ item.processing_time }}s</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-history-box" id="emptyStateBox">
+                    <i class="fas fa-folder-open"></i>
+                    <h3>No Detection History Yet</h3>
+                    <p>Upload and analyze facial images to start tracking classification history, confidence distributions, and XAI saliency maps.</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-cloud-upload-alt"></i> Analyze Your First Image
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isLight = body.classList.contains('light-mode');
+            const newTheme = isLight ? 'dark' : 'light';
+            
+            body.classList.toggle('light-mode', !isLight);
+            body.classList.toggle('dark-mode', isLight);
+            
+            localStorage.setItem('deepfake_theme', newTheme);
+            const btn = document.getElementById('themeBtn');
+            if (btn) {
+                btn.innerHTML = `<i class="fas fa-${isLight ? 'sun' : 'moon'}"></i>`;
+            }
+
+            fetch("{{ url_for('toggle_theme') }}", {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).catch(() => {});
+        }
+
+        function filterCards(type, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const cards = document.querySelectorAll('.history-card');
+            cards.forEach(card => {
+                if (type === 'all' || card.getAttribute('data-prediction') === type) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function toggleCardHeatmap(imgId, btn) {
+            const img = document.getElementById(imgId);
+            if (!img) return;
+            const annotated = img.getAttribute('data-annotated');
+            const saliency = img.getAttribute('data-saliency');
+            if (!saliency) return;
+
+            if (img.src.includes(annotated)) {
+                img.src = saliency;
+                btn.innerHTML = '<i class="fas fa-image"></i> View Annotated';
+            } else {
+                img.src = annotated;
+                btn.innerHTML = '<i class="fas fa-fire"></i> View XAI Heatmap';
+            }
+        }
+
+        function clearAllHistory() {
+            if (!confirm('Are you sure you want to clear your detection history?')) return;
+            localStorage.removeItem('deepfake_history');
+            fetch("{{ url_for('api_clear_history') }}", { method: 'POST' })
+                .then(() => window.location.reload())
+                .catch(() => window.location.reload());
+        }
+
+        // Apply saved theme
+        (function() {
+            const savedTheme = localStorage.getItem('deepfake_theme');
+            if (savedTheme) {
+                document.body.className = savedTheme === 'light' ? 'light-mode' : 'dark-mode';
+                const btn = document.getElementById('themeBtn');
+                if (btn) btn.innerHTML = `<i class="fas fa-${savedTheme === 'light' ? 'moon' : 'sun'}"></i>`;
+            }
+        })();
+    </script>
+</body>
+</html>

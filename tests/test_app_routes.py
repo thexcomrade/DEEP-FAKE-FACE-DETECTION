@@ -146,6 +146,29 @@ class TestAppRoutes(unittest.TestCase):
         self.assertEqual(data["status"], "online")
         self.assertIn("model_loaded", data)
 
+    def test_history_dashboard_page(self):
+        """GET /history returns 200 and renders detection history dashboard."""
+        response = self.client.get("/history")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Detection History", response.data)
+        self.assertIn(b"Total Faces Analyzed", response.data)
+
+    def test_api_get_and_clear_history(self):
+        """GET /api/history and POST /api/history/clear work predictably."""
+        # 1. Get history
+        get_res = self.client.get("/api/history")
+        self.assertEqual(get_res.status_code, 200)
+        data = get_res.get_json()
+        self.assertIn("history", data)
+        self.assertIn("total_scans", data)
+
+        # 2. Clear history
+        clear_res = self.client.post("/api/history/clear")
+        self.assertEqual(clear_res.status_code, 200)
+        clear_data = clear_res.get_json()
+        self.assertEqual(clear_data["status"], "cleared")
+        self.assertEqual(clear_data["total_scans"], 0)
+
     def test_api_predict(self):
         """POST /api/predict returns structured prediction JSON."""
         img_bytes = (self.fixtures_dir / "valid_test.jpg").read_bytes()

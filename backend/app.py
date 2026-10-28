@@ -96,6 +96,47 @@ def forward_prediction_to_render(render_url: str, file_path: Path) -> Optional[D
         return None
 
 
+
+def load_detection_history(upload_folder: Union[str, Path]) -> List[Dict[str, Any]]:
+    """Load list of previous face detection analyses from JSON audit file."""
+    import json
+    history_file = Path(upload_folder) / "detection_history.json"
+    if not history_file.exists():
+        return []
+    try:
+        with open(history_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Failed reading detection history: %s", exc)
+    return []
+
+
+def save_detection_history_entry(upload_folder: Union[str, Path], entry: Dict[str, Any], max_entries: int = 50) -> None:
+    """Save an analysis record to the persistent detection history audit log."""
+    import json
+    history_file = Path(upload_folder) / "detection_history.json"
+    try:
+        existing = load_detection_history(upload_folder)
+        entry_id = entry.get("id")
+        updated = [entry] + [item for item in existing if item.get("id") != entry_id]
+        updated = updated[:max_entries]
+        with open(history_file, "w", encoding="utf-8") as f:
+            json.dump(updated, f, indent=2)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Failed writing detection history entry: %s", exc)
+
+
+def clear_detection_history(upload_folder: Union[str, Path]) -> None:
+    """Clear all records from detection history audit log."""
+    history_file = Path(upload_folder) / "detection_history.json"
+    if history_file.exists():
+        try:
+            history_file.unlink()
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Failed clearing detection history: %s", exc)
+
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     """Flask application factory."""
     app = Flask(
@@ -224,6 +265,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             model_loaded=app.config["ML_MODEL"] is not None,
             model_info=app.config["ML_INFO"],
             render_backend_url=app.config.get("RENDER_BACKEND_URL", ""),
+            recent_scans=load_detection_history(app.config["UPLOAD_FOLDER"])[:3],
         )
 
     @app.route("/upload", methods=["POST"])
@@ -330,6 +372,23 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             session["model_used"] = prediction_result.model_used
             session["model_name"] = prediction_result.model_name
 
+            # Record scan into persistent detection history
+            history_record = {
+                "id": token,
+                "filename": orig_filename,
+                "image_filename": safe_filename,
+                "result_image": result_filename,
+                "saliency_image": session["saliency_image"],
+                "prediction": prediction_result.prediction,
+                "confidence": round(float(prediction_result.confidence), 1),
+                "probabilities": {k: round(float(v), 3) for k, v in prediction_result.probabilities.items()},
+                "timestamp": start_time.strftime("%b %d, %Y • %H:%M:%S"),
+                "processing_time": elapsed,
+                "analysis_reasons": prediction_result.analysis_reasons,
+                "model_used": prediction_result.model_used,
+            }
+            save_detection_history_entry(app.config["UPLOAD_FOLDER"], history_record)
+
             return redirect(url_for("result_page"))
 
         except Exception as exc:
@@ -338,6 +397,50 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
                 file_path.unlink()
             flash("An unexpected error occurred while processing the image. Please try again.", "error")
             return redirect(url_for("index"))
+
+
+    @app.route("/history")
+    @app.route("/api/index/history")
+    def history_dashboard():
+        """Render Detection History and Confidence Dashboard."""
+        history = load_detection_history(app.config["UPLOAD_FOLDER"])
+        total_scans = len(history)
+        real_count = sum(1 for item in history if item.get("prediction") == "Real")
+        fake_count = sum(1 for item in history if item.get("prediction") == "Fake")
+        avg_confidence = (
+            round(sum(item.get("confidence", 0.0) for item in history) / total_scans, 1)
+            if total_scans > 0
+            else 0.0
+        )
+
+        return render_template(
+            "history.html",
+            history=history,
+            total_scans=total_scans,
+            real_count=real_count,
+            fake_count=fake_count,
+            avg_confidence=avg_confidence,
+            theme=session.get("theme", "dark"),
+            render_backend_url=app.config.get("RENDER_BACKEND_URL", ""),
+        )
+
+    @app.route("/api/history", methods=["GET"])
+    @app.route("/api/index/api/history", methods=["GET"])
+    def api_get_history():
+        """REST API returning detection history audit items."""
+        history = load_detection_history(app.config["UPLOAD_FOLDER"])
+        return jsonify({
+            "status": "success",
+            "total_scans": len(history),
+            "history": history,
+        })
+
+    @app.route("/api/history/clear", methods=["POST"])
+    @app.route("/api/index/api/history/clear", methods=["POST"])
+    def api_clear_history():
+        """REST API clearing detection history records."""
+        clear_detection_history(app.config["UPLOAD_FOLDER"])
+        return jsonify({"status": "cleared", "total_scans": 0})
 
     @app.route("/result")
     @app.route("/api/index/result")
