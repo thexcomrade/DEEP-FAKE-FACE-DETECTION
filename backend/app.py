@@ -152,6 +152,8 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             return send_from_directory(str(app.config["UPLOAD_FOLDER"]), filename)
 
     @app.route("/")
+    @app.route("/api/index")
+    @app.route("/api/index/")
     def index():
         """Render upload home page."""
         return render_template(
@@ -162,6 +164,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         )
 
     @app.route("/upload", methods=["POST"])
+    @app.route("/api/index/upload", methods=["POST"])
     def upload_image():
         """Handle image upload, validation, inference, and result annotation."""
         if "file" not in request.files or not request.files["file"].filename:
@@ -274,6 +277,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             return redirect(url_for("index"))
 
     @app.route("/result")
+    @app.route("/api/index/result")
     def result_page():
         """Render results page."""
         uploaded_file = session.get("uploaded_file")
@@ -309,6 +313,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         )
 
     @app.route("/download")
+    @app.route("/api/index/download")
     def download():
         """Safely send the annotated result image to the client."""
         result_img = session.get("result_image")
@@ -335,6 +340,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         return send_file(str(target_path), as_attachment=True, download_name=download_name)
 
     @app.route("/toggle-theme", methods=["GET", "POST"])
+    @app.route("/api/index/toggle-theme", methods=["GET", "POST"])
     def toggle_theme():
         """Toggle UI theme between dark and light modes."""
         current = session.get("theme", "dark")
@@ -347,6 +353,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         return redirect(request.referrer or url_for("index"))
 
     @app.route("/health")
+    @app.route("/api/index/health")
     @app.route("/api/status")
     def health():
         """Diagnostic health check endpoint."""
@@ -363,6 +370,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         })
 
     @app.route("/api/predict", methods=["POST"])
+    @app.route("/api/index/api/predict", methods=["POST"])
     def api_predict():
         """REST API endpoint for programmatic image prediction."""
         if "file" not in request.files or not request.files["file"].filename:
