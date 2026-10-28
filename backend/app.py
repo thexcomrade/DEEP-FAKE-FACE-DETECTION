@@ -132,7 +132,9 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
 
 
     # Render backend integration config
-    app.config["RENDER_BACKEND_URL"] = os.environ.get("RENDER_BACKEND_URL", "").rstrip("/")
+    # When deployed to Vercel, connect by default to the Render backend service
+    default_render_backend = "https://deep-fake-face-detection.onrender.com" if IS_SERVERLESS else ""
+    app.config["RENDER_BACKEND_URL"] = os.environ.get("RENDER_BACKEND_URL", default_render_backend).rstrip("/")
 
     @app.after_request
     def set_cors_headers(response):

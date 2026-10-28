@@ -291,9 +291,9 @@
         <p class="subtitle">Upload a face image to classify whether it is Genuine or AI-Generated</p>
 
         {% if render_backend_url %}
-        <div style="margin: 0 auto 18px auto; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.4); border-radius: 20px; font-size: 0.8rem; color: #28a745; width: fit-content;" id="renderStatusPill">
-            <i class="fas fa-circle" style="font-size: 7px;"></i>
-            <span>Connected to Render ML Backend</span>
+        <div style="margin: 0 auto 18px auto; display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px; background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.4); border-radius: 20px; font-size: 0.8rem; color: #28a745; width: fit-content;" id="renderStatusPill">
+            <i class="fas fa-circle" id="renderStatusDot" style="font-size: 7px; color: #28a745;"></i>
+            <span id="renderStatusText">Connected to Render ML Backend</span>
         </div>
         {% endif %}
 
@@ -393,6 +393,37 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing & Analyzing...';
         });
+
+        {% if render_backend_url %}
+        (function() {
+            const renderUrl = "{{ render_backend_url }}";
+            const dot = document.getElementById('renderStatusDot');
+            const text = document.getElementById('renderStatusText');
+            const pill = document.getElementById('renderStatusPill');
+
+            if (renderUrl && dot && text && pill) {
+                fetch(renderUrl + '/health', { mode: 'cors' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'online') {
+                            dot.style.color = '#28a745';
+                            text.textContent = 'Render ML Backend: Online (Linear SVM 93.4%)';
+                            pill.style.background = 'rgba(40, 167, 69, 0.15)';
+                            pill.style.borderColor = 'rgba(40, 167, 69, 0.4)';
+                            pill.style.color = '#28a745';
+                        }
+                    })
+                    .catch(() => {
+                        // Render free tier waking up
+                        dot.style.color = '#ffc107';
+                        text.textContent = 'Render Backend: Standby / Waking up...';
+                        pill.style.background = 'rgba(255, 193, 7, 0.15)';
+                        pill.style.borderColor = 'rgba(255, 193, 7, 0.4)';
+                        pill.style.color = '#ffc107';
+                    });
+            }
+        })();
+        {% endif %}
     </script>
 </body>
 </html>
