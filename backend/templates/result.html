@@ -335,6 +335,39 @@
             color: var(--secondary-color);
             border-color: rgba(0, 123, 255, 0.3);
         }
+
+        @media print {
+            body {
+                background: #fff !important;
+                color: #111 !important;
+                padding: 10px !important;
+            }
+            .theme-toggle, .action-buttons, .view-toggle-container, .image-controls {
+                display: none !important;
+            }
+            .container {
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+                background: #fff !important;
+                color: #111 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 20px !important;
+            }
+            .metric-card, .analysis-details, .disclaimer-card {
+                background: #fdfdfd !important;
+                border: 1px solid #e0e0e0 !important;
+                color: #222 !important;
+            }
+            .metric-value, .confidence-score, h1, h2, h3 {
+                color: #111 !important;
+            }
+            .tag {
+                background: #f0f0f0 !important;
+                color: #333 !important;
+                border: 1px solid #ccc !important;
+            }
+        }
     </style>
 </head>
 <body class="{{ 'light-mode' if theme == 'light' else 'dark-mode' }}">
@@ -413,6 +446,9 @@
                 </a>
                 <button class="btn btn-outline" id="downloadCardBtn" title="Export HTML result report card as PNG screenshot">
                     <i class="fas fa-camera"></i> Save Summary Card
+                </button>
+                <button class="btn btn-outline" onclick="window.print()" title="Export official forensic result report as PDF">
+                    <i class="fas fa-file-pdf" style="color: #dc3545;"></i> Print / PDF Report
                 </button>
             {% endif %}
             <a href="{{ url_for('history_dashboard') }}" class="btn btn-outline" style="border-color: #ff6600; color: #ff6600;" title="View past detections in history dashboard">

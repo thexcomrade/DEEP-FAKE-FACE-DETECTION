@@ -605,6 +605,62 @@
             </div>
         </div>
 
+
+        <!-- Model Performance Benchmark (Feature #6) -->
+        <details style="margin-bottom: 25px; background: var(--card-dark); border-radius: 12px; border: 1px solid var(--card-border-dark); padding: 16px 20px;" id="benchmarkDetails">
+            <summary style="cursor: pointer; font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-flask" style="color: #ff6600;"></i> Model Benchmark & Validation Metrics (Held-Out Test Split)
+                </span>
+                <span style="font-size: 0.8rem; color: #ff6600; font-weight: 600;">Click to Expand &rarr;</span>
+            </summary>
+            
+            <div style="margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;">
+                <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px; border: 1px solid var(--card-border-dark); text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;">93.40%</div>
+                    <div style="font-size: 0.78rem; color: var(--muted-dark); margin-top: 4px;">Test Accuracy</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px; border: 1px solid var(--card-border-dark); text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #007bff;">94.65%</div>
+                    <div style="font-size: 0.78rem; color: var(--muted-dark); margin-top: 4px;">Precision (Fake)</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px; border: 1px solid var(--card-border-dark); text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #ffc107;">92.00%</div>
+                    <div style="font-size: 0.78rem; color: var(--muted-dark); margin-top: 4px;">Recall (Fake)</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px; border: 1px solid var(--card-border-dark); text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #ff6600;">93.31%</div>
+                    <div style="font-size: 0.78rem; color: var(--muted-dark); margin-top: 4px;">F1-Score</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px; border: 1px solid var(--card-border-dark); text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #17a2b8;">0.9275</div>
+                    <div style="font-size: 0.78rem; color: var(--muted-dark); margin-top: 4px;">ROC-AUC Score</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 14px; border-radius: 8px; border: 1px solid var(--card-border-dark); text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #6f42c1;">7.63 ms</div>
+                    <div style="font-size: 0.78rem; color: var(--muted-dark); margin-top: 4px;">CPU Latency / Face</div>
+                </div>
+            </div>
+
+            <!-- Confusion Matrix Display -->
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--card-border-dark);">
+                <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;">
+                    <i class="fas fa-table"></i> Empirical Confusion Matrix (1,000 Held-Out Faces)
+                </div>
+                <div style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 8px; text-align: center; font-size: 0.8rem;">
+                    <div></div>
+                    <div style="font-weight: 700; color: #28a745;">Predicted Real</div>
+                    <div style="font-weight: 700; color: #dc3545;">Predicted Fake</div>
+                    <div style="font-weight: 700; text-align: right; padding-right: 8px;">Actual Real</div>
+                    <div style="background: rgba(40,167,69,0.18); border: 1px solid rgba(40,167,69,0.4); padding: 8px; border-radius: 6px; font-weight: 700;">474 (True Real)</div>
+                    <div style="background: rgba(220,53,69,0.12); border: 1px solid rgba(220,53,69,0.3); padding: 8px; border-radius: 6px;">26 (False Fake)</div>
+                    <div style="font-weight: 700; text-align: right; padding-right: 8px;">Actual Fake</div>
+                    <div style="background: rgba(40,167,69,0.12); border: 1px solid rgba(40,167,69,0.3); padding: 8px; border-radius: 6px;">40 (False Real)</div>
+                    <div style="background: rgba(220,53,69,0.18); border: 1px solid rgba(220,53,69,0.4); padding: 8px; border-radius: 6px; font-weight: 700;">460 (True Fake)</div>
+                </div>
+            </div>
+        </details>
+
         <!-- Filter Controls -->
         <div class="filter-bar">
             <div class="filter-tabs">
