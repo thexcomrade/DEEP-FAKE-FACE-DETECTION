@@ -137,6 +137,59 @@ def clear_detection_history(upload_folder: Union[str, Path]) -> None:
         except Exception as exc:
             logging.getLogger(__name__).warning("Failed clearing detection history: %s", exc)
 
+class VercelPathMiddleware:
+    """
+    Normalizes WSGI PATH_INFO when Vercel internal rewrites forward requests
+    to the WSGI handler.
+    """
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        import urllib.parse
+        qs = environ.get("QUERY_STRING", "")
+
+        # 1. Check explicit __vercel_path passed via vercel.json rewrite
+        if "__vercel_path" in qs:
+            parsed_qs = urllib.parse.parse_qs(qs, keep_blank_values=True)
+            if "__vercel_path" in parsed_qs:
+                target_path = parsed_qs.pop("__vercel_path")[0]
+                rebuilt_pairs = []
+                for k, vs in parsed_qs.items():
+                    for v in vs:
+                        rebuilt_pairs.append((k, v))
+                environ["QUERY_STRING"] = urllib.parse.urlencode(rebuilt_pairs)
+                clean = "/" + target_path.strip().lstrip("/")
+                environ["PATH_INFO"] = clean or "/"
+                return self.wsgi_app(environ, start_response)
+
+        # 2. Check original URI headers set by proxy/CDN
+        for hdr in ("HTTP_X_FORWARDED_URI", "HTTP_X_ORIGINAL_URL", "HTTP_X_REWRITE_URL"):
+            val = environ.get(hdr)
+            if val:
+                path = val.split("?")[0]
+                if path and not path.startswith("/api/index"):
+                    clean = "/" + path.strip().lstrip("/")
+                    environ["PATH_INFO"] = clean or "/"
+                    return self.wsgi_app(environ, start_response)
+
+        # 3. Check matched path header
+        matched = environ.get("HTTP_X_MATCHED_PATH")
+        if matched and not matched.startswith("/api/index"):
+            clean = "/" + matched.split("?")[0].strip().lstrip("/")
+            environ["PATH_INFO"] = clean or "/"
+            return self.wsgi_app(environ, start_response)
+
+        # 4. Standard path normalization for Vercel /api/index entrypoint prefix
+        path = environ.get("PATH_INFO", "")
+        if path in ("/api/index", "/api/index/"):
+            environ["PATH_INFO"] = "/"
+        elif path.startswith("/api/index/"):
+            environ["PATH_INFO"] = "/" + path[len("/api/index"):].lstrip("/")
+
+        return self.wsgi_app(environ, start_response)
+
+
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     """Flask application factory."""
     app = Flask(
@@ -291,10 +344,12 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             recent_scans=load_detection_history(app.config["UPLOAD_FOLDER"])[:3],
         )
 
-    @app.route("/upload", methods=["POST"])
-    @app.route("/api/index/upload", methods=["POST"])
+    @app.route("/upload", methods=["GET", "POST"])
+    @app.route("/api/index/upload", methods=["GET", "POST"])
     def upload_image():
         """Handle image upload, validation, inference, and result annotation."""
+        if request.method == "GET":
+            return redirect(url_for("index"))
         if "file" not in request.files or not request.files["file"].filename:
             flash("No file was selected. Please choose an image to analyze.", "error")
             return redirect(url_for("index"))
@@ -335,15 +390,32 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
                 flash("Invalid or corrupted image file. Please upload a standard JPG, PNG, or WEBP.", "error")
                 return redirect(url_for("index"))
 
-            # Run machine learning prediction
-            model = app.config.get("ML_MODEL")
-            scaler = app.config.get("ML_SCALER")
-            prediction_result = ml_pipeline.predict_image(
-                file_path,
-                model=model,
-                scaler=scaler,
-                allow_heuristic_fallback=True,
-            )
+            # Run machine learning prediction (attempt Render backend first when configured, with local SVM fallback)
+            prediction_result = None
+            render_url = app.config.get("RENDER_BACKEND_URL")
+            if render_url:
+                try:
+                    remote_resp = forward_prediction_to_render(render_url, file_path)
+                    if remote_resp and remote_resp.get("status") == "success":
+                        prediction_result = ml_pipeline.PredictionResult(
+                            prediction=remote_resp.get("prediction"),
+                            confidence=float(remote_resp.get("confidence", 0.0)),
+                            class_probabilities=remote_resp.get("probabilities", {}),
+                            error=None,
+                        )
+                        app.logger.info("Render remote prediction succeeded: %s (%.2f%%)", prediction_result.prediction, prediction_result.confidence)
+                except Exception as r_exc:
+                    app.logger.warning("Render backend forwarding failed, falling back to local SVM: %s", r_exc)
+
+            if not prediction_result:
+                model = app.config.get("ML_MODEL")
+                scaler = app.config.get("ML_SCALER")
+                prediction_result = ml_pipeline.predict_image(
+                    file_path,
+                    model=model,
+                    scaler=scaler,
+                    allow_heuristic_fallback=True,
+                )
 
             if prediction_result.prediction == "Error":
                 if file_path.exists():
@@ -620,6 +692,8 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             theme=session.get("theme", "dark"),
         ), 500
 
+    # Wrap WSGI app with path normalization for Vercel & serverless runtimes
+    app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
     return app
 
 

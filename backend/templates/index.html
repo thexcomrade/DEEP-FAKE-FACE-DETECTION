@@ -302,7 +302,7 @@
         </div>
         {% endif %}
 
-        <form action="{{ url_for('upload_image') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+        <form action="/upload" method="POST" enctype="multipart/form-data" id="uploadForm">
             <div class="upload-box" id="dropArea" onclick="document.getElementById('fileInput').click()">
                 <div class="upload-icon">
                     <i class="fas fa-cloud-upload-alt"></i>
