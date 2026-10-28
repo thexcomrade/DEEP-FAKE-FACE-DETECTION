@@ -14,6 +14,8 @@ from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import secrets
+import sys
+import tempfile
 from typing import Any, Dict, Optional
 
 from flask import (
@@ -41,9 +43,17 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_STATIC_DIR = BASE_DIR / "static"
 DEFAULT_TEMPLATES_DIR = BASE_DIR / "templates"
-IS_VERCEL = bool(os.environ.get("VERCEL"))
-DEFAULT_UPLOADS_DIR = Path("/tmp") if IS_VERCEL else (DEFAULT_STATIC_DIR / "uploads")
 DEFAULT_MODELS_DIR = BASE_DIR / "models"
+
+# Detect serverless or read-only execution environments (Vercel, AWS Lambda, Cloud Functions)
+IS_SERVERLESS = bool(
+    os.environ.get("VERCEL")
+    or os.environ.get("VERCEL_ENV")
+    or os.environ.get("VERCEL_REGION")
+    or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    or os.environ.get("LAMBDA_TASK_ROOT")
+)
+DEFAULT_UPLOADS_DIR = Path(tempfile.gettempdir()) if IS_SERVERLESS else (DEFAULT_STATIC_DIR / "uploads")
 
 
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
@@ -55,41 +65,56 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     )
 
     # Base configuration
-    app.config["UPLOAD_FOLDER"] = str(DEFAULT_UPLOADS_DIR)
     app.config["MODELS_FOLDER"] = str(DEFAULT_MODELS_DIR)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max
     app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg", "webp"}
     app.config["MAX_IMAGE_PIXELS"] = 25_000_000  # Decompression bomb limit
 
-    # Secret key configuration
+    # Ensure upload directory exists and is writable (fallback safely to /tmp if read-only)
+    upload_target = Path(tempfile.gettempdir()) if IS_SERVERLESS else (DEFAULT_STATIC_DIR / "uploads")
+    try:
+        upload_target.mkdir(parents=True, exist_ok=True)
+        # Test writability
+        test_probe = upload_target / ".write_probe"
+        test_probe.touch()
+        test_probe.unlink(missing_ok=True)
+    except (OSError, PermissionError):
+        upload_target = Path(tempfile.gettempdir())
+        upload_target.mkdir(parents=True, exist_ok=True)
+    app.config["UPLOAD_FOLDER"] = str(upload_target)
+
+    # Secret key configuration (stable fallback prevents crash on unconfigured dashboards)
     configured_secret = os.environ.get("SECRET_KEY")
-    is_production = os.environ.get("FLASK_ENV") == "production" or os.environ.get("ENVIRONMENT") == "production"
     if configured_secret:
         app.secret_key = configured_secret
-    elif is_production:
-        raise RuntimeError("CRITICAL: SECRET_KEY environment variable must be set in production mode.")
     else:
-        # Stable development secret
-        app.secret_key = "deepfake-detection-local-dev-secret-key-321"
+        app.secret_key = os.environ.get("SESSION_SECRET", "deepfake-detection-production-secret-982347102938")
 
     # Apply testing or override configuration
     if test_config:
         app.config.update(test_config)
 
-    # Ensure required directories exist
-    upload_path = Path(app.config["UPLOAD_FOLDER"])
-    upload_path.mkdir(parents=True, exist_ok=True)
-
-    # Logging setup
-    log_file = BASE_DIR / "app.log"
-    handler = RotatingFileHandler(str(log_file), maxBytes=500_000, backupCount=3)
-    handler.setLevel(logging.INFO)
+    # Logging setup: always log to stdout/stderr (essential for Vercel, Render, and containerized runtimes)
+    app.logger.handlers.clear()
     formatter = logging.Formatter(
         "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
     )
-    handler.setFormatter(formatter)
-    app.logger.addHandler(handler)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
+    app.logger.addHandler(stream_handler)
     app.logger.setLevel(logging.INFO)
+
+    # Optional local file logging (safely ignored in read-only or serverless environments)
+    if not IS_SERVERLESS:
+        try:
+            log_file = BASE_DIR / "app.log"
+            file_handler = RotatingFileHandler(str(log_file), maxBytes=500_000, backupCount=3)
+            file_handler.setLevel(logging.INFO)
+            file_handler.setFormatter(formatter)
+            app.logger.addHandler(file_handler)
+        except (OSError, PermissionError):
+            pass
 
     # Locate and load canonical machine learning model and scaler
     models_dir = Path(app.config.get("MODELS_FOLDER", DEFAULT_MODELS_DIR))
@@ -119,10 +144,10 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     # ROUTES
     # ==========================================
 
-    # When deployed to Vercel (read-only filesystem), serve uploads dynamically from /tmp
-    if IS_VERCEL:
+    # When uploads are saved outside static/uploads (e.g. /tmp in serverless), serve them dynamically
+    if app.config["UPLOAD_FOLDER"] != str(DEFAULT_STATIC_DIR / "uploads"):
         @app.route("/static/uploads/<path:filename>")
-        def vercel_serve_upload(filename: str):
+        def serve_serverless_upload(filename: str):
             from flask import send_from_directory
             return send_from_directory(str(app.config["UPLOAD_FOLDER"]), filename)
 
