@@ -1,0 +1,42 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual Environments
+venv/
+backend/venv/
+.env
+.venv/
+env/
+
+# Application Logs
+*.log
+backend/app.log
+app.log
+
+# Uploaded Images & Generated Artifacts (User Data & Privacy)
+backend/static/uploads/*
+!backend/static/uploads/.gitkeep
+!backend/static/uploads/back.jpg
+
+# Static Generated Results
+backend/static/results/*
+
+# Large Datasets
+Dataset/
+dataset/
+
+# Media Archives
+*.mp4
+*.avi
+*.zip
+*.tar.gz
+*.h5
+*.pt
+
+# Model Artifacts (Tracked locally or via LFS)
+*.pkl
+!backend/models/svm_model.pkl
+!backend/models/svm_scaler.pkl

@@ -1,63 +1,68 @@
+"""
+Deepfake Training Module.
+
+Uses canonical 4,096-pixel feature extraction to train and persist
+the linear SVM model and scaler.
+"""
+
 import os
-import cv2
-import numpy as np
+from pathlib import Path
+import sys
 import joblib
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
 
-# Paths to dataset folders
-TRAIN_DIR = "backend/dataset/Train"
-VAL_DIR = "backend/dataset/Validation"
+BASE_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = BASE_DIR / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
-# Function to load images
-def load_images_from_folder(folder, label):
-    data = []
-    labels = []
-    if not os.path.exists(folder):
-        print(f"⚠️ Warning: Folder not found: {folder}")
-        return data, labels
+import ml_pipeline
 
-    for category in ["Real", "Fake"]:
-        category_path = os.path.join(folder, category)
-        if not os.path.exists(category_path):
-            print(f"⚠️ Warning: Missing category folder: {category_path}")
-            continue
 
-        for filename in os.listdir(category_path):
-            img_path = os.path.join(category_path, filename)
-            image = cv2.imread(img_path)
-            if image is None:
-                print(f"⚠️ Skipping invalid image: {img_path}")
-                continue
+def train(dataset_root=None, max_samples=2000):
+    candidates = [
+        Path(dataset_root) if dataset_root else None,
+        BASE_DIR / "Dataset",
+        BACKEND_DIR / "Dataset",
+    ]
+    data_dir = next((c for c in candidates if c and (c / "Train").exists()), None)
+    if not data_dir:
+        raise FileNotFoundError("Could not find Dataset directory with 'Train' subfolder.")
 
-            image = cv2.resize(image, (64, 64))  # Resize to uniform size
-            data.append(image.flatten())  # Flatten image
-            labels.append(0 if category == "Real" else 1)
+    train_dir = data_dir / "Train"
+    X, y = [], []
 
-    return np.array(data), np.array(labels)
+    for label_val, category in [(ml_pipeline.CLASS_REAL, "Real"), (ml_pipeline.CLASS_FAKE, "Fake")]:
+        cat_dir = train_dir / category
+        files = [f for f in cat_dir.iterdir() if f.suffix.lower() in [".jpg", ".png", ".jpeg", ".webp"]][:max_samples]
+        print(f"Loading {len(files)} {category} images...")
+        for img_path in files:
+            feat = ml_pipeline.extract_canonical_features(img_path)
+            if feat is not None:
+                X.append(feat)
+                y.append(label_val)
 
-# Load data
-X_train, y_train = load_images_from_folder(TRAIN_DIR, "Train")
-X_val, y_val = load_images_from_folder(VAL_DIR, "Validation")
+    X = np.array(X)
+    y = np.array(y)
 
-# Ensure data is not empty
-if len(X_train) == 0 or len(y_train) == 0:
-    raise ValueError("🚨 No training data found. Add images to 'backend/dataset/Train'.")
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
-if len(X_val) == 0 or len(y_val) == 0:
-    print("⚠️ Warning: No validation data found. The model will train without validation.")
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-# Split training data for testing
-X_train, X_test, y_train, y_test = train_test_split(
-    X_train, y_train, test_size=0.2, random_state=42
-)
+    print(f"Training Linear SVC on {len(X_train)} samples...")
+    model = SVC(kernel="linear", probability=True, random_state=42)
+    model.fit(X_train, y_train)
 
-# Train SVM model
-model = SVC(kernel="linear", probability=True)
-model.fit(X_train, y_train)
+    models_dir = BACKEND_DIR / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, models_dir / "svm_model.pkl")
+    joblib.dump(scaler, models_dir / "svm_scaler.pkl")
+    print(f"✅ Canonical model and scaler saved to {models_dir}")
 
-# Save model
-os.makedirs("backend", exist_ok=True)
-joblib.dump(model, "backend/model.pkl")
 
-print("✅ Model saved as backend/model.pkl")
+if __name__ == "__main__":
+    train()

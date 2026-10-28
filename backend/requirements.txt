@@ -1,0 +1,26 @@
+# Web Framework
+Flask==3.1.0
+Jinja2==3.1.6
+Werkzeug==3.1.3
+click==8.1.8
+itsdangerous==2.2.0
+blinker==1.9.0
+MarkupSafe==3.0.2
+
+# Production WSGI Server (Procfile / Render)
+gunicorn==23.0.0; sys_platform != "win32"
+
+# Computer Vision & Image Processing (Headless for Render & Vercel)
+opencv-python-headless==4.11.0.86
+Pillow==11.1.0
+
+# Machine Learning & Numerical Computation
+numpy==2.2.4
+scipy==1.15.2
+scikit-learn==1.6.1
+joblib==1.4.2
+threadpoolctl==3.6.0
+
+# Development & Testing (Optional)
+pytest==8.3.4
+tqdm==4.67.1

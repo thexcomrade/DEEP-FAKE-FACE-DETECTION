@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deepfake Analysis Result</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #ff6600;
+            --secondary-color: #007bff;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --text-light: #f8f9fa;
+            --text-dark: #212529;
+            --card-dark: rgba(28, 28, 28, 0.94);
+            --card-light: rgba(255, 255, 255, 0.96);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 25px 15px;
+            background-color: #121212;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        body.dark-mode {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.85)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-light);
+        }
+
+        body.light-mode {
+            background-image: linear-gradient(rgba(240, 242, 245, 0.85), rgba(240, 242, 245, 0.95)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-dark);
+        }
+
+        .result-container {
+            background: var(--card-dark);
+            padding: 35px 30px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 540px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.55);
+            text-align: center;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 102, 0, 0.2);
+            position: relative;
+        }
+
+        body.light-mode .result-container {
+            background: var(--card-light);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+            border: 1px solid rgba(0, 123, 255, 0.25);
+        }
+
+        h1 {
+            font-size: 1.85rem;
+            color: var(--primary-color);
+            margin-bottom: 18px;
+            font-weight: 700;
+        }
+
+        body.light-mode h1 {
+            color: var(--secondary-color);
+        }
+
+        .image-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .image-preview {
+            width: 100%;
+            max-width: 320px;
+            height: 240px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.35);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .filename-display {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 14px;
+            border-radius: 20px;
+            max-width: 90%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        body.light-mode .filename-display {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .prediction-badge {
+            font-size: 1.45rem;
+            font-weight: 700;
+            padding: 12px 28px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+        }
+
+        .prediction-badge.real {
+            background-color: var(--success-color);
+        }
+
+        .prediction-badge.fake {
+            background-color: var(--danger-color);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        body.light-mode .metrics-grid {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .metric-item {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 0.82rem;
+            opacity: 0.8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .provenance-note {
+            font-size: 0.78rem;
+            opacity: 0.75;
+            margin-top: 6px;
+            grid-column: 1 / -1;
+        }
+
+        .analysis-details {
+            text-align: left;
+            margin: 20px 0;
+            padding: 18px;
+            background: rgba(0, 0, 0, 0.22);
+            border-radius: 10px;
+        }
+
+        body.light-mode .analysis-details {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .analysis-details h3 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+
+        body.light-mode .analysis-details h3 {
+            color: var(--secondary-color);
+        }
+
+        .analysis-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.09);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-family: monospace;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        body.light-mode .tag {
+            background: rgba(0, 0, 0, 0.07);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .btn {
+            padding: 11px 22px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border: none;
+            font-size: 0.92rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+        }
+
+        body.light-mode .btn-primary {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-light);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-toggle {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-toggle.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        body.light-mode .btn-toggle {
+            background: rgba(0, 0, 0, 0.06);
+            color: var(--text-dark);
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+
+        body.light-mode .btn-toggle.active {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: white;
+        }
+
+        body.light-mode .btn-outline {
+            color: var(--text-dark);
+            border-color: rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+
+        body.light-mode .btn-secondary {
+            background-color: #5a6268;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 9px 16px;
+            background: rgba(255, 102, 0, 0.15);
+            color: var(--primary-color);
+            border: 1px solid rgba(255, 102, 0, 0.3);
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        body.light-mode .theme-toggle {
+            background: rgba(0, 123, 255, 0.15);
+            color: var(--secondary-color);
+            border-color: rgba(0, 123, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="{{ 'light-mode' if theme == 'light' else 'dark-mode' }}">
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle visual theme">
+        <i class="fas {{ 'fa-moon' if theme == 'light' else 'fa-sun' }}"></i>
+        <span>{{ 'Dark Mode' if theme == 'light' else 'Light Mode' }}</span>
+    </button>
+
+    <div class="result-container" id="resultCard">
+        <h1>Deepfake Analysis Result</h1>
+
+        <div class="image-container">
+            {% if saliency_img %}
+                <div class="view-switcher" style="display: flex; gap: 8px; margin-bottom: 12px; justify-content: center;">
+                    <button type="button" class="btn-toggle active" id="btnShowAnnotated" onclick="switchView('annotated')">
+                        <i class="fas fa-image"></i> Annotated Result
+                    </button>
+                    <button type="button" class="btn-toggle" id="btnShowHeatmap" onclick="switchView('heatmap')">
+                        <i class="fas fa-fire"></i> XAI Saliency Heatmap
+                    </button>
+                </div>
+            {% endif %}
+            {% if result_img %}
+                <div class="image-preview">
+                    <img src="{{ url_for('static', filename='uploads/' + result_img) }}" alt="Analyzed Result Image" id="resultImagePreview" />
+                </div>
+                <div class="filename-display" title="{{ original_filename or filename or result_img }}">
+                    <i class="fas fa-file-image"></i> {{ original_filename or filename or result_img }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="prediction-badge {{ 'real' if prediction == 'Real' else 'fake' }}">
+            <i class="fas {{ 'fa-check-circle' if prediction == 'Real' else 'fa-exclamation-triangle' }}"></i>
+            {{ prediction }} Face
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-item">
+                <div class="metric-value">{{ confidence or accuracy or 0.0 }}%</div>
+                <div class="metric-label">Model Confidence</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value">{{ "%.2f"|format(processing_time or 0.0) }}s</div>
+                <div class="metric-label">Processing Time</div>
+            </div>
+            <div class="provenance-note">
+                {% if model_used %}
+                    <i class="fas fa-check-shield text-success"></i> Evaluated with trained 4,096-feature SVM model
+                {% elif is_heuristic %}
+                    <i class="fas fa-info-circle text-warning"></i> Heuristic assessment (quality metrics fallback)
+                {% else %}
+                    <i class="fas fa-robot"></i> Automated computer vision analysis
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="analysis-details">
+            <h3>Visual & Statistical Indicators</h3>
+            <p>Detection attributes identified for this image:</p>
+            <div class="analysis-tags">
+                {% if analysis_reasons %}
+                    {% for reason in analysis_reasons %}
+                        <span class="tag">#{{ reason }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="tag">#facial analysis completed</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            {% if result_img %}
+                <a href="{{ url_for('download') }}" class="btn btn-primary" id="downloadImageBtn" title="Download annotated JPEG artifact">
+                    <i class="fas fa-download"></i> Download Annotated Image
+                </a>
+                <button class="btn btn-outline" id="downloadCardBtn" title="Export HTML result report card as PNG screenshot">
+                    <i class="fas fa-camera"></i> Save Summary Card
+                </button>
+            {% endif %}
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-redo"></i> Analyze Another Image
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isLight = body.classList.contains('light-mode');
+            const newTheme = isLight ? 'dark' : 'light';
+            
+            body.classList.toggle('light-mode', !isLight);
+            body.classList.toggle('dark-mode', isLight);
+            
+            localStorage.setItem('deepfake_theme', newTheme);
+            updateThemeButton(newTheme);
+            
+            fetch("{{ url_for('toggle_theme') }}", {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).catch(e => console.log('Theme note:', e));
+        }
+
+        function updateThemeButton(theme) {
+            const icon = document.querySelector('.theme-toggle i');
+            const text = document.querySelector('.theme-toggle span');
+            if (theme === 'light') {
+                icon.className = 'fas fa-moon';
+                text.textContent = 'Dark Mode';
+            } else {
+                icon.className = 'fas fa-sun';
+                text.textContent = 'Light Mode';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedTheme = localStorage.getItem('deepfake_theme');
+            if (savedTheme) {
+                document.body.classList.toggle('light-mode', savedTheme === 'light');
+                document.body.classList.toggle('dark-mode', savedTheme !== 'light');
+                updateThemeButton(savedTheme);
+            }
+        });
+
+        // Image View Switcher (Annotated vs XAI Saliency Heatmap)
+        const annotatedSrc = "{{ url_for('static', filename='uploads/' + result_img) if result_img else '' }}";
+        const saliencySrc = "{{ url_for('static', filename='uploads/' + saliency_img) if saliency_img else '' }}";
+
+        function switchView(mode) {
+            const preview = document.getElementById('resultImagePreview');
+            const btnAnnotated = document.getElementById('btnShowAnnotated');
+            const btnHeatmap = document.getElementById('btnShowHeatmap');
+            if (mode === 'heatmap' && saliencySrc) {
+                preview.src = saliencySrc;
+                btnHeatmap?.classList.add('active');
+                btnAnnotated?.classList.remove('active');
+            } else {
+                preview.src = annotatedSrc;
+                btnAnnotated?.classList.add('active');
+                btnHeatmap?.classList.remove('active');
+            }
+        }
+
+        // Screenshot card export
+        document.getElementById('downloadCardBtn')?.addEventListener('click', function() {
+            const card = document.getElementById('resultCard');
+            html2canvas(card).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'deepfake-analysis-report.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+    </script>
+</body>
+</html>

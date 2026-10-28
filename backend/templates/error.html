@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error &bull; Deepfake Detection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #ff6600;
+            --secondary-color: #007bff;
+            --danger-color: #dc3545;
+            --text-light: #f8f9fa;
+            --text-dark: #212529;
+            --card-dark: rgba(28, 28, 28, 0.94);
+            --card-light: rgba(255, 255, 255, 0.96);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background-color: #121212;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        body.dark-mode {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.88)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-light);
+        }
+
+        body.light-mode {
+            background-image: linear-gradient(rgba(240, 242, 245, 0.85), rgba(240, 242, 245, 0.95)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-dark);
+        }
+
+        .error-container {
+            max-width: 520px;
+            width: 100%;
+            padding: 40px 30px;
+            border-radius: 16px;
+            background: var(--card-dark);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.55);
+            text-align: center;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            position: relative;
+        }
+
+        body.light-mode .error-container {
+            background: var(--card-light);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+            border-color: rgba(220, 53, 69, 0.25);
+        }
+
+        .error-icon {
+            font-size: 52px;
+            color: var(--danger-color);
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            color: var(--danger-color);
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        p.error-lead {
+            margin-bottom: 18px;
+            font-size: 0.95rem;
+            opacity: 0.85;
+        }
+
+        .error-details {
+            background: rgba(220, 53, 69, 0.12);
+            color: #ff8585;
+            padding: 14px 18px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+            font-size: 0.9rem;
+            border-left: 3px solid var(--danger-color);
+            word-break: break-word;
+        }
+
+        body.light-mode .error-details {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 24px;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 12px rgba(255, 102, 0, 0.35);
+        }
+
+        body.light-mode .btn {
+            background: var(--secondary-color);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.35);
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 9px 16px;
+            background: rgba(255, 102, 0, 0.15);
+            color: var(--primary-color);
+            border: 1px solid rgba(255, 102, 0, 0.3);
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        body.light-mode .theme-toggle {
+            background: rgba(0, 123, 255, 0.15);
+            color: var(--secondary-color);
+            border-color: rgba(0, 123, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="{{ 'light-mode' if theme == 'light' else 'dark-mode' }}">
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <i class="fas {{ 'fa-moon' if theme == 'light' else 'fa-sun' }}"></i>
+        <span>{{ 'Dark Mode' if theme == 'light' else 'Light Mode' }}</span>
+    </button>
+
+    <div class="error-container">
+        <div class="error-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h1>{{ error_message or 'An unexpected error occurred' }}</h1>
+        <p class="error-lead">We encountered a problem while processing your request.</p>
+        
+        {% if error_details %}
+        <div class="error-details">
+            <strong>Diagnostic Info:</strong><br>{{ error_details }}
+        </div>
+        {% endif %}
+        
+        <a href="{{ url_for('index') }}" class="btn">
+            <i class="fas fa-home"></i> Return to Homepage
+        </a>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isLight = body.classList.contains('light-mode');
+            const newTheme = isLight ? 'dark' : 'light';
+            
+            body.classList.toggle('light-mode', !isLight);
+            body.classList.toggle('dark-mode', isLight);
+            
+            localStorage.setItem('deepfake_theme', newTheme);
+            updateThemeButton(newTheme);
+            
+            fetch("{{ url_for('toggle_theme') }}", {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).catch(e => console.log('Theme sync error:', e));
+        }
+
+        function updateThemeButton(theme) {
+            const icon = document.querySelector('.theme-toggle i');
+            const text = document.querySelector('.theme-toggle span');
+            if (theme === 'light') {
+                icon.className = 'fas fa-moon';
+                text.textContent = 'Dark Mode';
+            } else {
+                icon.className = 'fas fa-sun';
+                text.textContent = 'Light Mode';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedTheme = localStorage.getItem('deepfake_theme');
+            if (savedTheme) {
+                document.body.classList.toggle('light-mode', savedTheme === 'light');
+                document.body.classList.toggle('dark-mode', savedTheme !== 'light');
+                updateThemeButton(savedTheme);
+            }
+        });
+    </script>
+</body>
+</html>

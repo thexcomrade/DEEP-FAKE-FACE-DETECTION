@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deepfake Face Detection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        :root {
+            --primary-color: #ff6600;
+            --primary-hover: #e65c00;
+            --secondary-color: #007bff;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --text-light: #f8f9fa;
+            --text-dark: #212529;
+            --card-dark: rgba(26, 26, 26, 0.92);
+            --card-light: rgba(255, 255, 255, 0.96);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background-color: #121212;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        body.dark-mode {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.85)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-light);
+        }
+
+        body.light-mode {
+            background-image: linear-gradient(rgba(240, 242, 245, 0.85), rgba(240, 242, 245, 0.95)), url("{{ url_for('static', filename='images/background.jpg') }}");
+            color: var(--text-dark);
+        }
+
+        .container {
+            background: var(--card-dark);
+            padding: 35px 30px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 102, 0, 0.2);
+            position: relative;
+        }
+
+        body.light-mode .container {
+            background: var(--card-light);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 123, 255, 0.2);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .status-badge.online {
+            background: rgba(40, 167, 69, 0.2);
+            color: #4cd964;
+            border: 1px solid rgba(40, 167, 69, 0.4);
+        }
+
+        body.light-mode .status-badge.online {
+            color: #218838;
+        }
+
+        .status-badge.offline {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.4);
+        }
+
+        body.light-mode .status-badge.offline {
+            color: #d39e00;
+        }
+
+        h1 {
+            font-size: 1.85rem;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        body.light-mode h1 {
+            color: var(--secondary-color);
+        }
+
+        p.subtitle {
+            margin-bottom: 22px;
+            font-size: 0.95rem;
+            opacity: 0.85;
+        }
+
+        .upload-box {
+            border: 2px dashed var(--primary-color);
+            padding: 30px 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            cursor: pointer;
+            background: rgba(255, 102, 0, 0.04);
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        body.light-mode .upload-box {
+            border-color: var(--secondary-color);
+            background: rgba(0, 123, 255, 0.04);
+        }
+
+        .upload-box:hover, .upload-box.dragover {
+            transform: scale(1.01);
+            background: rgba(255, 102, 0, 0.1);
+        }
+
+        body.light-mode .upload-box:hover, body.light-mode .upload-box.dragover {
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 2.8rem;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+        }
+
+        body.light-mode .upload-icon {
+            color: var(--secondary-color);
+        }
+
+        .file-status-text {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .browse-btn {
+            display: inline-block;
+            padding: 8px 22px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 102, 0, 0.3);
+        }
+
+        body.light-mode .browse-btn {
+            background: var(--secondary-color);
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 13px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(255, 102, 0, 0.35);
+        }
+
+        body.light-mode .submit-btn {
+            background: var(--secondary-color);
+            box-shadow: 0 6px 16px rgba(0, 123, 255, 0.35);
+        }
+
+        .submit-btn:hover {
+            opacity: 0.92;
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 9px 16px;
+            background: rgba(255, 102, 0, 0.15);
+            color: var(--primary-color);
+            border: 1px solid rgba(255, 102, 0, 0.3);
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        body.light-mode .theme-toggle {
+            background: rgba(0, 123, 255, 0.15);
+            color: var(--secondary-color);
+            border-color: rgba(0, 123, 255, 0.3);
+        }
+
+        .flash-message {
+            color: #ff6b6b;
+            background: rgba(220, 53, 69, 0.18);
+            border: 1px solid rgba(220, 53, 69, 0.4);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: left;
+        }
+
+        body.light-mode .flash-message {
+            color: #721c24;
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .formats-hint {
+            font-size: 0.78rem;
+            opacity: 0.7;
+            margin-top: 14px;
+        }
+    </style>
+</head>
+<body class="{{ 'light-mode' if theme == 'light' else 'dark-mode' }}">
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle visual theme">
+        <i class="fas {{ 'fa-moon' if theme == 'light' else 'fa-sun' }}"></i>
+        <span>{{ 'Dark Mode' if theme == 'light' else 'Light Mode' }}</span>
+    </button>
+
+    <div class="container">
+        {% if model_loaded %}
+            <div class="status-badge online" title="Trained SVM model loaded and active">
+                <i class="fas fa-shield-alt"></i> Model Active (93.4% Accuracy)
+            </div>
+        {% else %}
+            <div class="status-badge offline" title="Using heuristic fallback because model artifacts are not loaded">
+                <i class="fas fa-exclamation-triangle"></i> Heuristic Fallback Mode
+            </div>
+        {% endif %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h1>Deepfake Face Detection</h1>
+        <p class="subtitle">Upload a face image to classify whether it is Genuine or AI-Generated</p>
+
+        <form action="{{ url_for('upload_image') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+            <div class="upload-box" id="dropArea" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <p class="file-status-text" id="fileStatusText">Drag & drop your face photo here, or</p>
+                <label for="fileInput" class="browse-btn" onclick="event.stopPropagation()">Browse Files</label>
+                <input type="file" id="fileInput" name="file" accept="image/png, image/jpeg, image/webp" required />
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                <i class="fas fa-search"></i> Analyze Image
+            </button>
+        </form>
+
+        <p class="formats-hint">Supported formats: JPG, PNG, WEBP &bull; Max size: 16 MB</p>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isLight = body.classList.contains('light-mode');
+            const newTheme = isLight ? 'dark' : 'light';
+            
+            body.classList.toggle('light-mode', !isLight);
+            body.classList.toggle('dark-mode', isLight);
+            
+            localStorage.setItem('deepfake_theme', newTheme);
+            updateThemeButton(newTheme);
+            
+            // Sync with backend session
+            fetch("{{ url_for('toggle_theme') }}", {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).catch(e => console.log('Theme sync note:', e));
+        }
+
+        function updateThemeButton(theme) {
+            const icon = document.querySelector('.theme-toggle i');
+            const text = document.querySelector('.theme-toggle span');
+            if (theme === 'light') {
+                icon.className = 'fas fa-moon';
+                text.textContent = 'Dark Mode';
+            } else {
+                icon.className = 'fas fa-sun';
+                text.textContent = 'Light Mode';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedTheme = localStorage.getItem('deepfake_theme');
+            if (savedTheme) {
+                document.body.classList.toggle('light-mode', savedTheme === 'light');
+                document.body.classList.toggle('dark-mode', savedTheme !== 'light');
+                updateThemeButton(savedTheme);
+            }
+        });
+
+        const fileInput = document.getElementById('fileInput');
+        const fileStatusText = document.getElementById('fileStatusText');
+        const dropArea = document.getElementById('dropArea');
+
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                fileStatusText.textContent = 'Selected: ' + this.files[0].name;
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false);
+        });
+
+        dropArea.addEventListener('drop', e => {
+            const dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length > 0) {
+                fileInput.files = dt.files;
+                fileStatusText.textContent = 'Selected: ' + dt.files[0].name;
+            }
+        }, false);
+
+        document.getElementById('uploadForm').addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing & Analyzing...';
+        });
+    </script>
+</body>
+</html>
